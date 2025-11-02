@@ -4,7 +4,7 @@ import math
 import time
 
 root = tk.Tk()
-root.title("Ultimate Curve Controls")
+root.title("Ball Simulation Controls")
 
 canvas = tk.Canvas(root, width=600, height=600)
 canvas.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
@@ -22,7 +22,7 @@ fps = 100
 airResistance = 0.99
 gravity = 10
 friction = 0.89
-previousTime = time.time()
+simSpeed = 10
 
 #Ball parameters
 xpos = 0
@@ -64,24 +64,25 @@ speedCounter.pack()
 angleCounter = tk.Label(root, text="Angle: 0")
 angleCounter.pack()
 
+#Visibility of momentum
 showForce = False
 def toggleForceVis():
     global showForce
     showForce = not showForce
 
-showForceButton = tk.Checkbutton(root, text="Show force", command=toggleForceVis)
+showForceButton = tk.Checkbutton(root, text="Show momentum", command=toggleForceVis)
 showForceButton.pack()
 
 #Apply force
 angleSlider = tk.Scale(root, from_=0, to=360, resolution=15, orient="horizontal", label="Angle of force")
-angleSlider.set(90)
+angleSlider.set(45)
 angleSlider.pack(pady=(20, 0))
 
 ForceButton = tk.Button(root, text="Apply Force", command=lambda: applyForce(100, angleSlider.get()))
 ForceButton.pack()
 
 def updateFrame():
-    global xpos, ypos, fps, ballSize, angle, speed, previousTime, showForce
+    global xpos, ypos, fps, ballSize, angle, speed, showForce, simSpeed
     t.clear()
 
     #Drawing border
@@ -105,16 +106,12 @@ def updateFrame():
         t.pencolor("red")
         t.pensize(max(5, ballSize / 10))
         t.pendown()
-        t.forward(speed * ballSize ** 0.1)
+        t.forward(speed + ballSize / 4)
         t.penup()
         t.pencolor("black")
         t.pensize(1)
 
-    currentTime = time.time()
-    # deltaT = currentTime - previousTime
-    deltaT = 1.0 / fps * 10
-    previousTime = currentTime
-
+    deltaT = simSpeed / fps
     calculateFizix(deltaT)
 
     screen.update()
@@ -170,6 +167,7 @@ def calculateFizix(deltaT):
     if abs(yspeed) < 0.1:
         yspeed = 0
 
+    #Calculate angle
     speed = math.sqrt(xspeed ** 2 + yspeed ** 2)
     if speed != 0:
         angle = math.degrees(math.atan2(yspeed, xspeed))
