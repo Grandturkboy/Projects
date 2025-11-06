@@ -94,12 +94,13 @@ def calcFizix():
     
     ballSize = sizeSlider.get() + 0.01
     gravity = gravitySlider.get()
-    airResistance = (((airResSlider.get() + 9) / 10) + 9) / 10
+    airResistance = (airResSlider.get() + 99) / 100
     initLen = initLenSlider.get()
     springConstant = springConstantSlider.get()
+
     length = math.hypot(xpos, ypos - anchory)
-    mass = ballSize / 25
     lengthLabel.config(text="Length: " + str(round(length)))
+    mass = ballSize / 25
 
     #Gravity
     yspeed -= gravity * deltaT
