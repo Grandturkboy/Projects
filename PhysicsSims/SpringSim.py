@@ -21,7 +21,7 @@ gravity = 10
 anchory = 100
 fps = 100
 deltaT = 1 / fps
-airResistance = 0.99
+airResistance = 0.999
 
 #Ball parameters
 ballSize = 25
@@ -35,6 +35,7 @@ mass = ballSize / 25
 initLen = 50
 length = initLen
 springConstant = 0.4
+dampening = 0
 
 #Controls
 sizeSlider = tk.Scale(root, from_=10, to=500, resolution=1, orient="horizontal", label="Size")
@@ -45,9 +46,9 @@ gravitySlider = tk.Scale(root, from_=0, to=100, resolution=1, orient="horizontal
 gravitySlider.set(10)
 gravitySlider.pack()
 
-airResSlider = tk.Scale(root, from_=0, to=1, resolution=0.1, orient="horizontal", label="Air Resistance")
-airResSlider.set(0.8)
-airResSlider.pack()
+dampenSlider = tk.Scale(root, from_=0, to=1, resolution=0.1, orient="horizontal", label="Damping")
+dampenSlider.set(0.8)
+dampenSlider.pack()
 
 initLenSlider = tk.Scale(root, from_=0, to=200, resolution=1, orient="horizontal", label="Initial Length")
 initLenSlider.set(100)
@@ -94,9 +95,9 @@ def calcFizix():
     
     ballSize = sizeSlider.get() + 0.01
     gravity = gravitySlider.get()
-    airResistance = (airResSlider.get() + 99) / 100
     initLen = initLenSlider.get()
     springConstant = springConstantSlider.get()
+    dampening = dampenSlider.get()
 
     length = math.hypot(xpos, ypos - anchory)
     lengthLabel.config(text="Length: " + str(round(length)))
@@ -111,7 +112,7 @@ def calcFizix():
 
     #Finding angle and force
     angle = math.atan2(ypos - anchory, xpos)
-    force = -(length - initLen) * springConstant
+    force = -(length - initLen) * springConstant - dampening * (xspeed * math.cos(angle) + yspeed * math.sin(angle))
     
     #Applying the force to the speeds
     xspeed += math.cos(angle) * force / mass * deltaT
