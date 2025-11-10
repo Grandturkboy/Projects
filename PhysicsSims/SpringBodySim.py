@@ -43,6 +43,10 @@ airResSlider = tk.Scale(root, from_=0, to=1, resolution=0.1, orient="horizontal"
 airResSlider.set(0.8)
 airResSlider.pack()
 
+dampenSlider = tk.Scale(root, from_=0, to=1, resolution=0.1, orient="horizontal", label="Damping")
+dampenSlider.set(0.1)
+dampenSlider.pack()
+
 springConstantSlider = tk.Scale(root, from_=0, to=100, resolution=1, orient="horizontal", label="Spring Constant")
 springConstantSlider.set(1)
 springConstantSlider.pack()
@@ -167,7 +171,7 @@ def calcSprings():
         mass2 = ballSize2 / 25
 
         angle = math.atan2(ypos1 - ypos2, xpos1 - xpos2)
-        force = -(distance - initLen) * springConstant
+        force = -(distance - initLen) * springConstant - dampenSlider.get() * ((xspeed1 - xspeed2) * math.cos(angle) + (yspeed1 - yspeed2) * math.sin(angle))
 
         xspeed1 += math.cos(angle) * force / mass1 * deltaT
         yspeed1 += math.sin(angle) * force / mass1 * deltaT
