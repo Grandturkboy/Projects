@@ -3,6 +3,7 @@ import tkinter as tk
 import math
 import random
 
+#Setting up turtle and UI
 root = tk.Tk()
 root.title("Spring Simulation Controls")
 
@@ -96,6 +97,7 @@ def drawFrame():
     t.clear()
     t.penup()
 
+    #Drawing connections
     for a in range(len(connections)):
         ballIndex1 = connections[a][0]
         ballIndex2 = connections[a][1]
@@ -121,11 +123,13 @@ def drawFrame():
         t.pendown()
         t.goto(balls[ballIndex2]["xpos"], balls[ballIndex2]["ypos"])
         t.penup()
-
+    
+    #Drawing points
     for i in range(len(balls)):
         t.goto(balls[i]["xpos"], balls[i]["ypos"])
         t.dot(max(min(balls[i]["ballSize"], 120), 30), "black")
 
+    #Drawing ground
     t.goto(-300, -200)
     t.pencolor("black")
     t.pensize(2)
@@ -144,6 +148,7 @@ def calcFizix():
     gravity = gravitySlider.get()
     airResistance = (airResSlider.get() + 99) / 100
 
+    #Applying forces exept springs
     for i in range(len(balls)):
         xpos = balls[i]["xpos"]
         ypos = balls[i]["ypos"]
@@ -151,14 +156,18 @@ def calcFizix():
         yspeed = balls[i]["yspeed"]
         ballSize = balls[i]["ballSize"]
 
+        #Gravity
         yspeed -= gravity * deltaT
 
+        #Air resistance
         xspeed *= airResistance
         yspeed *= airResistance
 
+        #Momentum
         xpos += xspeed * deltaT
         ypos += yspeed * deltaT
 
+        #Boundaries
         if ypos - (ballSize / 2) <= -200:
             ypos = -200 + balls[i]["ballSize"] / 2
             yspeed *= -0.5
@@ -180,11 +189,14 @@ def calcSprings():
     springConstant = springConstantSlider.get()
 
     for a in range(len(connections)):
+
+        #Getting info
         ballIndex1 = connections[a][0]
         ballIndex2 = connections[a][1]
         initLen = connections[a][2] + 0.001
         distance = math.hypot(balls[ballIndex1]["xpos"] - balls[ballIndex2]["xpos"], balls[ballIndex1]["ypos"] - balls[ballIndex2]["ypos"])
         
+        #Getting ball1 variables
         xpos1 = balls[ballIndex1]["xpos"]
         ypos1 = balls[ballIndex1]["ypos"]
         xspeed1 = balls[ballIndex1]["xspeed"]
@@ -192,6 +204,7 @@ def calcSprings():
         ballSize1 = balls[ballIndex1]["ballSize"]
         mass1 = ballSize1 / 25
 
+        #Getting ball2 variables
         xpos2 = balls[ballIndex2]["xpos"]
         ypos2 = balls[ballIndex2]["ypos"]
         xspeed2 = balls[ballIndex2]["xspeed"]
@@ -199,9 +212,11 @@ def calcSprings():
         ballSize2 = balls[ballIndex2]["ballSize"]
         mass2 = ballSize2 / 25
 
+        #Calculating force
         angle = math.atan2(ypos1 - ypos2, xpos1 - xpos2)
         force = -(distance - initLen) * springConstant - dampenSlider.get() * ((xspeed1 - xspeed2) * math.cos(angle) + (yspeed1 - yspeed2) * math.sin(angle))
 
+        #Applying spring force
         xspeed1 += math.cos(angle) * force / mass1 * deltaT
         yspeed1 += math.sin(angle) * force / mass1 * deltaT
 
