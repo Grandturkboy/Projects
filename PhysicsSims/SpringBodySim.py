@@ -51,6 +51,22 @@ springConstantSlider = tk.Scale(root, from_=0, to=100, resolution=1, orient="hor
 springConstantSlider.set(1)
 springConstantSlider.pack()
 
+def toggleColor():
+    global colorIt
+    colorIt = not colorIt
+
+colorIt = False
+colorButton = tk.Checkbutton(root, text="Toggle Color", command=toggleColor)
+colorButton.pack()
+
+def toggleStretch():
+    global stretchIt
+    stretchIt = not stretchIt
+
+stretchIt = False
+stretchButton = tk.Checkbutton(root, text="Toggle Stretch", command=toggleStretch)
+stretchButton.pack()
+
 def kickIt():
     balls[-1]["xspeed"] += random.randint(-300, 300)
     balls[-1]["yspeed"] += random.randint(-300, 300)
@@ -85,10 +101,23 @@ def drawFrame():
         ballIndex2 = connections[a][1]
         initLen = connections[a][2] + 0.001
         distance = math.hypot(balls[ballIndex1]["xpos"] - balls[ballIndex2]["xpos"], balls[ballIndex1]["ypos"] - balls[ballIndex2]["ypos"])
-        
+        diff = distance - initLen
+        stretch = abs(diff)
+        stress = min(1, stretch / 100)
+
+        if colorIt:
+            red = int(255 * stress)
+            green = int(255 * (1 - stress))
+            t.pencolor(f"#{red:02x}{green:02x}00")
+        else: 
+            t.pencolor("brown")
+
+        if stretchIt:
+            t.pensize(min(10, max(2, (-diff + 20) / 5)))
+        else:
+            t.pensize(10)
+
         t.goto(balls[ballIndex1]["xpos"], balls[ballIndex1]["ypos"])
-        t.pencolor("brown")
-        t.pensize(min(10, max(2,(abs(distance - initLen) ** -1) * 500)))
         t.pendown()
         t.goto(balls[ballIndex2]["xpos"], balls[ballIndex2]["ypos"])
         t.penup()
