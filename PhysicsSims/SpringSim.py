@@ -3,6 +3,7 @@ import tkinter as tk
 import math
 import random
 
+#Setting up turtle and UI
 root = tk.Tk()
 root.title("Spring Simulation Controls")
 
@@ -11,10 +12,13 @@ canvas.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
 screen = turtle.TurtleScreen(canvas)
 screen.tracer(0, 0)
-functionsUsed = 0
 t = turtle.RawTurtle(screen)
 t.hideturtle()
 t.speed(0)
+
+trailt = turtle.RawTurtle(screen)
+trailt.hideturtle()
+trailt.speed(0)
 
 #World parameters
 gravity = 10
@@ -30,6 +34,11 @@ ypos = 0
 xspeed = 100
 yspeed = 0
 mass = ballSize / 25
+trailSkip = 30
+trailSkipCounter = 0
+postions = []
+for i in range(10):
+    postions.append({"xp": 0, "yp": 0})
 
 #Spring parameters
 initLen = 50
@@ -70,11 +79,33 @@ lengthLabel = tk.Label(root, text="Length: " + str(length))
 lengthLabel.pack()
 
 def drawFrame():
-    global xpos, ypos, xspeed, yspeed, length, initLen
+    global xpos, ypos, xspeed, yspeed, length, initLen, trailSkipCounter, trailSkip
     t.clear()
     t.penup()
     ballSize = sizeSlider.get()
     initLen = initLenSlider.get()
+
+    #Drawing trail
+    if trailSkipCounter > trailSkip:
+        trailt.penup()
+        trailt.clear()
+        trailt.pensize(4)
+        length = len(postions)
+
+        for i in range(1, length):
+            age = i / length
+            intensity = int(200 - age * 150)
+            trailt.pencolor(f"#{intensity:02x}{intensity:02x}{intensity:02x}")
+            trailt.goto(postions[i - 1]["xp"], postions[i - 1]["yp"])
+            trailt.pendown()
+            trailt.goto(postions[i]["xp"], postions[i]["yp"])
+            trailt.penup()
+
+        trailSkipCounter = 0
+        postions.append({"xp": xpos, "yp": ypos})
+        postions.pop(0)
+    else:
+        trailSkipCounter += 1
 
     #Drawing anchor, spring and ball
     t.goto(xpos, ypos)
@@ -93,6 +124,7 @@ def drawFrame():
 def calcFizix():
     global xpos, ypos, xspeed, yspeed, length
     
+    #Calculating variables
     ballSize = sizeSlider.get() + 0.01
     gravity = gravitySlider.get()
     initLen = initLenSlider.get()
