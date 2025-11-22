@@ -75,6 +75,7 @@ pressureCoefficient = 100
 volume = gasAmount
 maxSpeed = 1000
 kickForce = 800
+elasticity = 0.2
 
 # World parameters
 gravity = 400
@@ -83,6 +84,7 @@ fps = 60
 deltaT = 1 / fps
 simulationsPerFrame = 5
 simCounter = 0
+dampening = 1
 
 # Controls
 sideSlider = tk.Scale(root, from_=3, to=100, resolution=1, orient=tk.HORIZONTAL, label="Side Amount", command=getNewShape)
@@ -94,9 +96,9 @@ gravitySlider = tk.Scale(root, from_=0, to=1000, resolution=10, orient=tk.HORIZO
 gravitySlider.set(400)
 gravitySlider.pack()
 
-dampenSlider = tk.Scale(root, from_=0, to=10, resolution=0.01, orient=tk.HORIZONTAL, label="Dampening")
-dampenSlider.set(1)
-dampenSlider.pack()
+elasticitySlider = tk.Scale(root, from_=0, to=1, resolution=0.01, orient=tk.HORIZONTAL, label="Elasticity")
+elasticitySlider.set(0.2)
+elasticitySlider.pack()
 
 airResSlider = tk.Scale(root, from_=0.9, to=1, resolution=0.001, orient=tk.HORIZONTAL, label="Air Resistance")
 airResSlider.set(0.98)
@@ -145,6 +147,7 @@ showForceButton.pack()
 
 
 def toggleStress():
+    
     global showStress
     showStress = not showStress
 
@@ -262,7 +265,7 @@ def doFizix():
         simCounter += 1
 
     airResistance = airResSlider.get()
-    dampening = dampenSlider.get()
+    elasticity = elasticitySlider.get()
     springStrenth = springStrenthSlider.get() * pressureCoefficientSlider.get()
     pressureCoefficient = pressureCoefficientSlider.get()
 
@@ -387,22 +390,22 @@ def doFizix():
 
         if ypos - (pointMass / 2) <= -200:
             ypos = -200 + pointMass / 2
-            yspeed *= -friction * 0.8
+            yspeed *= -friction * elasticity
             xspeed *= friction
 
         if xpos - (pointMass / 2) <= -300:
             xpos = -300 + pointMass / 2
-            xspeed *= -friction * 0.8
+            xspeed *= -friction * elasticity
             yspeed *= friction
 
         if xpos + (pointMass / 2) >= 300:
             xpos = 300 - pointMass / 2
-            xspeed *= -friction * 0.8
+            xspeed *= -friction * elasticity
             yspeed *= friction
 
         if ypos + (pointMass / 2) >= 300:
             ypos = 300 - pointMass / 2
-            yspeed *= -friction * 0.8
+            yspeed *= -friction * elasticity
             xspeed *= friction
 
         points[i]["xpos"] = xpos
