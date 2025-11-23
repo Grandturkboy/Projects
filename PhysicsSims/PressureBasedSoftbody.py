@@ -70,19 +70,20 @@ def calcArea():
 getNewShape(10)
 gasAmount = calcArea()
 pointMass = 1
-springStrenth = 1000
+springStrength = 1000
 pressureCoefficient = 100
 volume = gasAmount
-maxSpeed = 1000
+maxSpeed = 2000
 kickForce = 800
 elasticity = 0.2
+forceReduction = 0.9
 
 # World parameters
 gravity = 400
 friction = 0.8
-fps = 60
+fps = 300
 deltaT = 1 / fps
-simulationsPerFrame = 5
+simulationsPerFrame = 10
 simCounter = 0
 dampening = 1
 
@@ -101,16 +102,20 @@ elasticitySlider.set(0.2)
 elasticitySlider.pack()
 
 airResSlider = tk.Scale(root, from_=0.9, to=1, resolution=0.001, orient=tk.HORIZONTAL, label="Air Resistance")
-airResSlider.set(0.98)
+airResSlider.set(0.995)
 airResSlider.pack()
+
+forceReductionSlider = tk.Scale(root, from_=0, to=1, resolution=0.01, orient=tk.HORIZONTAL, label="Force Reduction")
+forceReductionSlider.set(0.9)
+forceReductionSlider.pack()
 
 pressureCoefficientSlider = tk.Scale(root, from_=0, to=50, resolution=0.1, orient=tk.HORIZONTAL, label="Pressure Coefficient")
 pressureCoefficientSlider.set(10)
 pressureCoefficientSlider.pack()
 
-springStrenthSlider = tk.Scale(root, from_=0, to=400, resolution=1, orient=tk.HORIZONTAL, label="Spring Strenth")
-springStrenthSlider.set(300)
-springStrenthSlider.pack()
+springStrengthSlider = tk.Scale(root, from_=0, to=1000, resolution=1, orient=tk.HORIZONTAL, label="Spring Strength")
+springStrengthSlider.set(300)
+springStrengthSlider.pack()
 
 areaLabel = tk.Label(root, text="Area: " + str(gasAmount), width=20)
 areaLabel.pack()
@@ -147,7 +152,6 @@ showForceButton.pack()
 
 
 def toggleStress():
-    
     global showStress
     showStress = not showStress
 
@@ -170,6 +174,7 @@ def drawFrame():
 
     if volume > 0:
         pressure = min(1e5, ((gasAmount / max(volume, 1e-2)) ** 0.8) * pressureCoefficient)
+        pressure = gasAmount / volume * pressureCoefficient
         pressureLabel.config(text="Pressure: " + str(round(pressure, 1)))
     else:
         print("Volume is 0")
@@ -249,7 +254,7 @@ def drawFrame():
         doFizix()
 
     screen.update()
-    root.after(round(deltaT * 1000), drawFrame)
+    root.after(round(1000 * deltaT), drawFrame)
 
 
 def doFizix():
@@ -265,8 +270,9 @@ def doFizix():
         simCounter += 1
 
     airResistance = airResSlider.get()
+    forceReduction = forceReductionSlider.get()
     elasticity = elasticitySlider.get()
-    springStrenth = springStrenthSlider.get() * pressureCoefficientSlider.get()
+    springStrength = springStrengthSlider.get() * pressureCoefficientSlider.get()
     pressureCoefficient = pressureCoefficientSlider.get()
 
     # Spring + pressure forces
@@ -305,7 +311,7 @@ def doFizix():
             edgeLength = 0.01
 
         angle = math.atan2(ypos1 - ypos2, xpos1 - xpos2)
-        pressureForce = -pressure * edgeLength * pressureCoefficient
+        pressureForce = (-pressure * edgeLength * pressureCoefficient) * forceReduction
 
         if showForce and showForceCheck:
             t.penup()
@@ -323,7 +329,7 @@ def doFizix():
         points[ballIndex2]["yspeed"] += perpendicularVectorY * pressureForce * deltaT / 2
 
         # Spring
-        restLenght = connections[i][2]
+        restLength = connections[i][2]
         relSx = xspeed1 - xspeed2
         relSy = yspeed1 - yspeed2
 
@@ -333,7 +339,15 @@ def doFizix():
         springVel = relSx * springDirx + relSy * springDiry
         dampenForce = dampening * springVel
 
-        Springforce = -(edgeLength - restLenght) * springStrenth - dampenForce
+        Springforce = (-(edgeLength - restLength) * springStrength - dampenForce) * forceReduction
+
+        if showForce and showForceCheck:
+            t.goto((xpos1 + xpos2) / 2, (ypos1 + ypos2) / 2)
+            t.setheading(math.degrees(angle + math.pi / 2))
+            t.pencolor("red")
+            t.pendown()
+            t.forward(Springforce / pointMass * deltaT / 10)
+            t.penup()
 
         points[ballIndex1]["xspeed"] += math.cos(angle) * Springforce / pointMass * deltaT
         points[ballIndex1]["yspeed"] += math.sin(angle) * Springforce / pointMass * deltaT
@@ -350,17 +364,18 @@ def doFizix():
         yspeed = points[i]["yspeed"]
 
         yspeed -= gravity * deltaT
+
         xspeed *= airResistance
         yspeed *= airResistance
 
         if abs(xspeed) > maxSpeed or abs(yspeed) > maxSpeed:
             print("Too fast bitch")
             pressureCoefficientSlider.set(pressureCoefficientSlider.get() - 1)
-            springStrenthSlider.set(springStrenthSlider.get() - 1)
+            springStrengthSlider.set(springStrengthSlider.get() - 1)
 
-            if pressureCoefficientSlider.get() == 0 or springStrenthSlider.get() == 0:
+            if pressureCoefficientSlider.get() == 0 or springStrengthSlider.get() == 0:
                 print("Resetting sliders")
-                springStrenthSlider.set(100)
+                springStrengthSlider.set(100)
                 pressureCoefficientSlider.set(10)
                 getNewShape(sideSlider.get())
                 break
