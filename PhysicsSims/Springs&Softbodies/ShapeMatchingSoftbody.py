@@ -2,7 +2,6 @@ import turtle
 import tkinter as tk
 from tkinter import ttk
 import math
-import random
 import time
 
 # Setting up turtle and UI
@@ -26,11 +25,14 @@ shapes = []
 shapeIndex = 0
 newPoints = []
 newConnections = []
+drawnConnections = []
+drawnPoints = []
 
 # Setting up simulation
 fps = 100
-deltaT = 1 / fps
 simPerFrame = 2
+start = 0
+end = time.perf_counter()
 
 # Setting up world
 worldSize = 250
@@ -52,6 +54,7 @@ def arrangeControls():
     addPointButton.pack_forget()
     gravitySlider.pack_forget()
     springStrengthSlider.pack_forget()
+    dampeningSlider.pack_forget()
     airResistanceSlider.pack_forget()
     showShapesCheck.pack_forget()
     if spawningMode.get() == "Custom":
@@ -59,12 +62,14 @@ def arrangeControls():
         yposSlider.pack()
         addPointButton.pack(pady=(2, 20))
         gravitySlider.pack()
+        dampeningSlider.pack()
         springStrengthSlider.pack()
         airResistanceSlider.pack()
         showShapesCheck.pack()
     elif spawningMode.get() == "N-gon":
         sideSlider.pack(pady=(0, 5))
         gravitySlider.pack()
+        dampeningSlider.pack()
         springStrengthSlider.pack()
         airResistanceSlider.pack()
         showShapesCheck.pack()
@@ -75,10 +80,16 @@ spawningMode.pack()
 spawningModeVar = spawningMode.get()
 
 def spawnNewShape():
-    global objs, points, shapeIndex, newConnections, newPoints
-
-    points = newPoints.copy()
-    connections = newConnections.copy()
+    global objs, points, shapeIndex, newConnections, newPoints, connections, drawnConnections, drawnPoints
+    if spawningMode.get() == "N-gon":
+        points = newPoints.copy()
+        connections = newConnections.copy()
+    elif spawningMode.get() == "Custom":
+        drawnConnections.append([len(drawnPoints) - 1, 0])
+        points = drawnPoints.copy()
+        connections = drawnConnections.copy()
+        drawnPoints = []
+        drawnConnections = []
 
     objs.append({"points": points.copy(), "connections": connections.copy()})
 
@@ -96,7 +107,9 @@ def spawnNewShape():
         shapes[shapeIndex]["points"].append({"xpos": px,"ypos": py, "angle": math.degrees(math.atan2(py, px))})
 
     shapeIndex += 1
-    getNewShape(sideSlider.get())
+    if spawningMode.get() == "N-gon":
+        getNewShape(sideSlider.get())
+
 
 spawnShapeButton = tk.Button(root, text="Spawn Shape", command=spawnNewShape)
 spawnShapeButton.pack(pady=(2, 20))
@@ -133,13 +146,19 @@ yposSlider = tk.Scale(root, from_=-worldSize, to=worldSize, resolution=1, orient
 yposSlider.set(0)
 
 def addPoint():
-    print("Add point")
+    drawnPoints.append({"xpos": xposSlider.get(), "ypos": yposSlider.get(), "xspeed": 0, "yspeed": 0})
+    if len(drawnPoints) > 1:
+        drawnConnections.append([len(drawnPoints) - 2, len(drawnPoints) - 1])
 
 addPointButton = tk.Button(root, text="Add Point", command=lambda: addPoint())
 
 gravitySlider = tk.Scale(root, from_=0, to=100, resolution=1, orient=tk.HORIZONTAL, label="Gravity")
 gravitySlider.set(10)
 gravitySlider.pack()
+
+dampeningSlider = tk.Scale(root, from_=0, to=10, resolution=0.01, orient=tk.HORIZONTAL, label="Dampening")
+dampeningSlider.set(0.5)
+dampeningSlider.pack()
 
 springStrengthSlider = tk.Scale(root, from_=0, to=100, resolution=1, orient=tk.HORIZONTAL, label="Spring Strength")
 springStrengthSlider.set(1)
@@ -163,43 +182,17 @@ def resetSpawning():
     newPoints = []
     newConnections = []
 
-# def spawnShape():
-    # global objs, points, shapeIndex, newConnections, newPoints
-
-    # points = []
-    # points.clear()
-    # points.append({"xpos": -50, "ypos": 50, "xspeed": 0, "yspeed": 0})
-    # points.append({"xpos": 0, "ypos": 10, "xspeed": 0, "yspeed": 0})
-    # points.append({"xpos": 50, "ypos": 50, "xspeed": 0, "yspeed": 0})
-    # points.append({"xpos": 50, "ypos": -50, "xspeed": 0, "yspeed": 0})
-    # points.append({"xpos": -50, "ypos": -60, "xspeed": 0, "yspeed": 0})
-
-    # connections = []
-    # for i in range(len(points)):
-    #     connections.append([i, (i + 1) % len(points)])
-
-    # objs.append({"points": points.copy(), "connections": connections.copy()})
-
-    # shapes.append({"points": []})
-
-    # findAvrPoint(shapeIndex)
-
-    # for i in range(len(objs[shapeIndex]["points"])):
-    #     px = objs[shapeIndex]["points"][i]["xpos"] - avrX
-    #     py = objs[shapeIndex]["points"][i]["ypos"] - avrY
-    #     shapes[shapeIndex]["points"].append({"xpos": px,"ypos": py, "angle": math.degrees(math.atan2(py, px))})
-
-    # findAvrAngle(shapeIndex)
-    
-    # shapeIndex += 1
-
 def drawFrame():
-    global spawningModeVar
+    global spawningModeVar, start, end
     t.clear()
     t.penup()
+    start = time.perf_counter()
+    deltaT = start - end
+    deltaT = min(deltaT, 0.05)
+    end = start
 
     for i in range(simPerFrame):
-        doFizix()
+        doFizix(deltaT)
 
     # Getting and drawing the "frames" of the shapes
     if showShapes:
@@ -252,16 +245,36 @@ def drawFrame():
     t.penup()
 
     # Drawing the new shape
-    t.pencolor("lightgray")
-    for i in range(len(newConnections)):
-        t.penup()
-        t.goto(newPoints[newConnections[i][0]]["xpos"], newPoints[newConnections[i][0]]["ypos"])
-        t.pendown()
-        t.goto(newPoints[newConnections[i][1]]["xpos"], newPoints[newConnections[i][1]]["ypos"])
-        t.penup()
-    for i in range(len(newPoints)):
-        t.goto(newPoints[i]["xpos"], newPoints[i]["ypos"])
-        t.dot(5, "lightgray")
+    if spawningModeVar == "N-gon":
+        t.pencolor("lightgray")
+        for i in range(len(newConnections)):
+            t.penup()
+            t.goto(newPoints[newConnections[i][0]]["xpos"], newPoints[newConnections[i][0]]["ypos"])
+            t.pendown()
+            t.goto(newPoints[newConnections[i][1]]["xpos"], newPoints[newConnections[i][1]]["ypos"])
+            t.penup()
+        for i in range(len(newPoints)):
+            t.goto(newPoints[i]["xpos"], newPoints[i]["ypos"])
+            t.dot(5, "lightgray")
+    elif spawningModeVar == "Custom":
+        t.pencolor("lightgray")
+        for i in range(len(drawnConnections)):
+            t.penup()
+            t.goto(drawnPoints[drawnConnections[i][0]]["xpos"], drawnPoints[drawnConnections[i][0]]["ypos"])
+            t.pendown()
+            t.goto(drawnPoints[drawnConnections[i][1]]["xpos"], drawnPoints[drawnConnections[i][1]]["ypos"])
+            t.penup()
+        for i in range(len(drawnPoints)):
+            t.goto(drawnPoints[i]["xpos"], drawnPoints[i]["ypos"])
+            t.dot(5, "lightgray")
+        if len(drawnPoints) > 1:
+            t.goto(drawnPoints[0]["xpos"], drawnPoints[0]["ypos"])
+            t.pendown()
+            t.goto(xposSlider.get(), yposSlider.get())
+            t.goto(drawnPoints[len(drawnPoints) - 1]["xpos"], drawnPoints[len(drawnPoints) - 1]["ypos"])
+            t.penup()
+        t.goto(xposSlider.get(), yposSlider.get())
+        t.dot(5, "red")
 
     # Rearranging the controls if needed
     if spawningModeVar != spawningMode.get():
@@ -272,12 +285,15 @@ def drawFrame():
             getNewShape(sideSlider.get())
 
     screen.update()
-    root.after(round(deltaT * 100), drawFrame)
+    root.after(round(1), drawFrame)
 
-def doFizix():
+def doFizix(dt):
     gravity = gravitySlider.get()
     springStrength = springStrengthSlider.get()
     airResistance = airResistanceSlider.get()
+    dampening = dampeningSlider.get()
+    deltaT = dt
+
     for o in range(len(objs)):
         findAvrPoint(o)
         findAvrAngle(o)
@@ -285,6 +301,7 @@ def doFizix():
         avrX = shapes[o]["avrX"]
         avrY = shapes[o]["avrY"]
         avrAngle = shapes[o]["avrAngle"]
+        objSpeedX, objSpeedY = findShapeSpeed(o)
 
         for pt in range(len(objs[o]["points"])):
             p = objs[o]["points"][pt]
@@ -300,12 +317,27 @@ def doFizix():
             p["xspeed"] *= math.sqrt(airResistance)
             p["yspeed"] *= math.sqrt(airResistance)
             
-            # Spring forces(F = mű * deltaX)
+            # Spring forces(F = mű * deltaX) with dampening
             xStretch = springX - p["xpos"]
             yStretch = springY - p["ypos"]
 
-            xForce = xStretch * springStrength
-            yForce = yStretch * springStrength
+            distance = math.hypot(xStretch, yStretch)
+            if distance != 0:
+                springDirX = xStretch / distance
+                springDirY = yStretch / distance
+            else:
+                springDirX = springDirY = 0
+
+            relSpedX = p["xspeed"] - objSpeedX
+            relSpedY = p["yspeed"] - objSpeedY
+
+            springVel = relSpedX * springDirX + relSpedY * springDirY
+            dampenForce = springVel * dampening
+
+            springForce = distance * springStrength
+
+            xForce = springForce * springDirX - dampenForce * springDirX
+            yForce = springForce * springDirY - dampenForce * springDirY
 
             p["xspeed"] += xForce * deltaT
             p["yspeed"] += yForce * deltaT
@@ -368,6 +400,16 @@ def findAvrAngle(si):
 
     shapes[si]["avrAngle"] = avrAngle
 
-# spawnShape()
+def findShapeSpeed(si):
+    sumSpeedX = 0
+    sumSpeedY = 0
+    for pi in range(len(objs[si]["points"])):
+        sumSpeedX += objs[si]["points"][pi]["xspeed"]
+        sumSpeedY += objs[si]["points"][pi]["yspeed"]
+    sumSpeedX /= len(objs[si]["points"])
+    sumSpeedY /= len(objs[si]["points"])
+    print(round(sumSpeedX), round(sumSpeedY))
+    return sumSpeedX, sumSpeedY
+
 drawFrame()
 root.mainloop()
