@@ -30,6 +30,9 @@ friction = 0.89
 elasticity = 0.8
 simSpeed = 10
 
+start = time.perf_counter()
+end = start
+
 #Balls
 balls = [
     {"xpos": 0, "ypos": 0, "xspeed": 100, "yspeed": 0, "ballSize": 50, "color": "black"},
@@ -82,8 +85,12 @@ tBorder.goto(-size, size)
 tBorder.penup()
 
 def updateFrame():
-    global xpos, ypos, fps, ballSize, simSpeed, previousTime, fpsUpdateTimer
+    global xpos, ypos, fps, ballSize, simSpeed, previousTime, fpsUpdateTimer, start, end
     t.clear()
+
+    end = time.time()
+    deltaT = end - start
+    start = end
 
     #Drawing balls
     for ball in balls:
@@ -91,7 +98,7 @@ def updateFrame():
         t.goto(ball["xpos"], ball["ypos"])
         t.dot(ball["ballSize"], ball["color"])
 
-    deltaT = simSpeed / fps
+    # deltaT = simSpeed / fps
     calculateFizix(deltaT)
 
     #Calculating FPS
@@ -108,7 +115,7 @@ def updateFrame():
 
     previousTime = currentTime
     screen.update()
-    root.after(round(1000 / fps) , updateFrame)
+    root.after(10, updateFrame)
 
 def calculateFizix(deltaT):
     global xpos, ypos, xspeed, yspeed, ballSize, fps, airResistance, gravity, friction, elasticity
@@ -142,21 +149,17 @@ def calculateFizix(deltaT):
         #Bounce and boudary
         if xpos + ballSize / 2 >= size:
             xpos = size - ballSize / 2
-            xspeed = -xspeed * elasticity
-            xspeed *= friction
+            xspeed = -xspeed * elasticity * friction
         elif xpos - ballSize / 2 <= -size:
             xpos = -size + ballSize / 2
-            xspeed = -xspeed * elasticity
-            xspeed *= friction
+            xspeed = -xspeed * elasticity * friction
 
         if ypos + ballSize / 2 >= size:
             ypos = size - ballSize / 2
-            yspeed = -yspeed * elasticity
-            yspeed *= friction
+            yspeed = -yspeed * elasticity * friction
         elif ypos - ballSize / 2 <= -size:
             ypos = -size + ballSize / 2
-            yspeed = -yspeed * elasticity
-            yspeed *= friction
+            yspeed = -yspeed * elasticity * friction
 
         #Ground friction
         if ypos - ballSize / 2 <= -size + 0.1:
