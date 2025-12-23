@@ -1,7 +1,7 @@
 import turtle
 import tkinter as tk
 import math
-import random
+import time
 
 # Setting up turtle and UI
 root = tk.Tk()
@@ -23,7 +23,6 @@ points = []
 connections = []
 bodyRadius = 75
 
-
 def getNewShape(n):
     global gasAmount, volume
     points.clear()
@@ -37,7 +36,7 @@ def getNewShape(n):
     side = bodyRadius * 2 * math.sin(math.pi / n)
 
     for i in range(n):
-        points.append({"xpos": t.xcor(), "ypos": t.ycor(), "xspeed": 0, "yspeed": 0})
+        points.append({"xpos": t.xcor(), "ypos": t.ycor(), "prevX": t.xcor(), "prevY": t.ycor(), "aX": 0, "aY": 0})
         t.left(360 / n)
         t.forward(side)
 
@@ -47,7 +46,6 @@ def getNewShape(n):
 
     gasAmount = calcArea()
     volume = gasAmount
-
 
 # Shoelace area
 def calcArea():
@@ -65,7 +63,6 @@ def calcArea():
 
     return area / 2
 
-
 # Object parameters
 getNewShape(10)
 gasAmount = calcArea()
@@ -81,11 +78,20 @@ forceReduction = 0.9
 # World parameters
 gravity = 400
 friction = 0.8
-fps = 300
+fps = 200
 deltaT = 1 / fps
-simulationsPerFrame = 10
+simulationsPerFrame = 2
 simCounter = 0
 dampening = 1
+worldSize = 250
+
+start = time.perf_counter()
+end = start
+
+cicleStart = time.perf_counter()
+cicleEnd = cicleStart
+
+angle = 0
 
 # Controls
 sideSlider = tk.Scale(root, from_=3, to=100, resolution=1, orient=tk.HORIZONTAL, label="Side Amount", command=getNewShape)
@@ -109,11 +115,11 @@ forceReductionSlider = tk.Scale(root, from_=0, to=1, resolution=0.01, orient=tk.
 forceReductionSlider.set(0.9)
 forceReductionSlider.pack()
 
-pressureCoefficientSlider = tk.Scale(root, from_=0, to=50, resolution=0.1, orient=tk.HORIZONTAL, label="Pressure Coefficient")
-pressureCoefficientSlider.set(10)
+pressureCoefficientSlider = tk.Scale(root, from_=0, to=5000, resolution=0.1, orient=tk.HORIZONTAL, label="Pressure Coefficient")
+pressureCoefficientSlider.set(100)
 pressureCoefficientSlider.pack()
 
-springStrengthSlider = tk.Scale(root, from_=0, to=1000, resolution=1, orient=tk.HORIZONTAL, label="Spring Strength")
+springStrengthSlider = tk.Scale(root, from_=0, to=10000, resolution=1, orient=tk.HORIZONTAL, label="Spring Strength")
 springStrengthSlider.set(300)
 springStrengthSlider.pack()
 
@@ -127,45 +133,50 @@ kickAngleSlider = tk.Scale(root, from_=0, to=180, resolution=3, orient=tk.HORIZO
 kickAngleSlider.set(90)
 kickAngleSlider.pack()
 
-
 def kickIt():
     x = kickForce * math.cos(math.radians(kickAngleSlider.get()))
     y = kickForce * math.sin(math.radians(kickAngleSlider.get()))
 
     for i in range(len(points)):
-        points[i]["xspeed"] += x
-        points[i]["yspeed"] += y
-
+        points[i]["prevX"] -= x * deltaT
+        points[i]["prevY"] -= y * deltaT
 
 kickButton = tk.Button(root, text="Kick", command=kickIt)
 kickButton.pack()
-
 
 def forceToggle():
     global showForce
     showForce = not showForce
 
-
 showForce = False
 showForceButton = tk.Checkbutton(root, text="Show momentum", command=forceToggle)
 showForceButton.pack()
-
 
 def toggleStress():
     global showStress
     showStress = not showStress
 
-
 showStress = False
 showStressButton = tk.Checkbutton(root, text="Show stress", command=toggleStress)
 showStressButton.pack()
 
+def toggleTimer():
+    global showTimer
+    showTimer = not showTimer
+
+showTimer = False
+showTimerButton = tk.Checkbutton(root, text="Show timer", command=toggleTimer)
+showTimerButton.pack()
 
 def drawFrame():
-    global pressure, volume
-
+    global pressure, volume, start, end, angle, cicleStart, cicleEnd
     t.clear()
     t.penup()
+    start = time.perf_counter()
+    deltaT = start - end
+    deltaT = min(deltaT, 0.05)
+    end = start
+    # print(round(1/deltaT))
 
     # Pressure
     pressureCoefficient = pressureCoefficientSlider.get()
@@ -173,7 +184,7 @@ def drawFrame():
     area = volume
 
     if volume > 0:
-        pressure = min(1e5, ((gasAmount / max(volume, 1e-2)) ** 0.8) * pressureCoefficient)
+        pressure = min(5000, ((gasAmount / max(volume, 1e-2)) ** 0.8) * pressureCoefficient)
         pressure = gasAmount / volume * pressureCoefficient
         pressureLabel.config(text="Pressure: " + str(round(pressure, 1)))
     else:
@@ -221,12 +232,13 @@ def drawFrame():
     t.pensize(1)
     t.pencolor("black")
 
-    t.goto(-300, 300)
+    t.penup()
+    t.goto(-worldSize, worldSize)
     t.pendown()
-    t.goto(-300, -200)
-    t.goto(300, -200)
-    t.goto(300, 300)
-    t.goto(-300, 300)
+    t.goto(-worldSize, -worldSize)
+    t.goto(worldSize, -worldSize)
+    t.goto(worldSize, worldSize)
+    t.goto(-worldSize, worldSize)
     t.penup()
 
     # Average pos
@@ -247,18 +259,32 @@ def drawFrame():
     t.forward(20)
     t.penup()
 
+    if showTimer:
+        t.goto(0,0)
+        t.pendown()
+        angle += 100 * deltaT
+        t.setheading(angle)
+        t.forward(50)
+        t.penup()
+        t.dot(5, "red")
+
+        if round(angle) % 360 <= 2:
+            cicleStart = time.perf_counter()
+            print(cicleStart - cicleEnd)
+            cicleEnd = cicleStart
+            angle = 3
+
     areaLabel.config(text="Area: " + str(round(area / 100, 1)))
 
     # Physics substeps
     for i in range(simulationsPerFrame):
         doFizix()
-
     screen.update()
-    root.after(round(1000 * deltaT), drawFrame)
+    root.after(round(1), drawFrame)
 
 
 def doFizix():
-    global pressure, simCounter
+    global pressure, simCounter, deltaT
 
     showForceCheck = showForce
 
@@ -272,8 +298,7 @@ def doFizix():
     airResistance = airResSlider.get()
     forceReduction = forceReductionSlider.get()
     elasticity = elasticitySlider.get()
-    springStrength = springStrengthSlider.get() * pressureCoefficientSlider.get()
-    pressureCoefficient = pressureCoefficientSlider.get()
+    springStrength = springStrengthSlider.get() * 10
 
     # Spring + pressure forces
     for i in range(len(connections)):
@@ -284,11 +309,6 @@ def doFizix():
         ypos1 = points[ballIndex1]["ypos"]
         xpos2 = points[ballIndex2]["xpos"]
         ypos2 = points[ballIndex2]["ypos"]
-
-        xspeed1 = points[ballIndex1]["xspeed"]
-        yspeed1 = points[ballIndex1]["yspeed"]
-        xspeed2 = points[ballIndex2]["xspeed"]
-        yspeed2 = points[ballIndex2]["yspeed"]
 
         edgeVectorX = xpos2 - xpos1
         edgeVectorY = ypos2 - ypos1
@@ -311,7 +331,7 @@ def doFizix():
             edgeLength = 0.01
 
         angle = math.atan2(ypos1 - ypos2, xpos1 - xpos2)
-        pressureForce = (-pressure * edgeLength * pressureCoefficient) * forceReduction
+        pressureForce = (-pressure * edgeLength) * forceReduction
 
         if showForce and showForceCheck:
             t.penup()
@@ -323,15 +343,15 @@ def doFizix():
             t.penup()
 
         # Pressure force
-        points[ballIndex1]["xspeed"] += perpendicularVectorX * pressureForce * deltaT / 2
-        points[ballIndex1]["yspeed"] += perpendicularVectorY * pressureForce * deltaT / 2
-        points[ballIndex2]["xspeed"] += perpendicularVectorX * pressureForce * deltaT / 2
-        points[ballIndex2]["yspeed"] += perpendicularVectorY * pressureForce * deltaT / 2
+        points[ballIndex1]["aX"] += (perpendicularVectorX * pressureForce / 2) / pointMass
+        points[ballIndex1]["aY"] += (perpendicularVectorY * pressureForce / 2) / pointMass
+        points[ballIndex2]["aX"] += (perpendicularVectorX * pressureForce / 2) / pointMass
+        points[ballIndex2]["aY"] += (perpendicularVectorY * pressureForce / 2) / pointMass
 
         # Spring
         restLength = connections[i][2]
-        relSx = xspeed1 - xspeed2
-        relSy = yspeed1 - yspeed2
+        relSx = (points[ballIndex1]["xpos"] - points[ballIndex1]["prevX"]) - (points[ballIndex2]["xpos"] - points[ballIndex2]["prevX"])
+        relSy = (points[ballIndex1]["ypos"] - points[ballIndex1]["prevY"]) - (points[ballIndex2]["ypos"] - points[ballIndex2]["prevY"])
 
         springDirx = math.cos(angle)
         springDiry = math.sin(angle)
@@ -349,10 +369,10 @@ def doFizix():
             t.forward(Springforce / pointMass * deltaT / 10)
             t.penup()
 
-        points[ballIndex1]["xspeed"] += math.cos(angle) * Springforce / pointMass * deltaT
-        points[ballIndex1]["yspeed"] += math.sin(angle) * Springforce / pointMass * deltaT
-        points[ballIndex2]["xspeed"] -= math.cos(angle) * Springforce / pointMass * deltaT
-        points[ballIndex2]["yspeed"] -= math.sin(angle) * Springforce / pointMass * deltaT
+        points[ballIndex1]["aX"] += (math.cos(angle) * Springforce) / pointMass
+        points[ballIndex1]["aY"] += (math.sin(angle) * Springforce) / pointMass
+        points[ballIndex2]["aX"] -= (math.cos(angle) * Springforce) / pointMass
+        points[ballIndex2]["aY"] -= (math.sin(angle) * Springforce) / pointMass
 
     # Forces per point
     for i in range(len(points)):
@@ -360,74 +380,50 @@ def doFizix():
 
         xpos = points[i]["xpos"]
         ypos = points[i]["ypos"]
-        xspeed = points[i]["xspeed"]
-        yspeed = points[i]["yspeed"]
 
-        yspeed -= gravity * deltaT
+        points[i]["aY"] -= gravity
 
-        xspeed *= airResistance
-        yspeed *= airResistance
+        vx = points[i]["xpos"] - points[i]["prevX"]
+        vy = points[i]["ypos"] - points[i]["prevY"]
 
-        if abs(xspeed) > maxSpeed or abs(yspeed) > maxSpeed:
-            print("Too fast bitch")
-            pressureCoefficientSlider.set(pressureCoefficientSlider.get() - 1)
-            springStrengthSlider.set(springStrengthSlider.get() - 1)
+        vx *= airResistance
+        vy *= airResistance
 
-            if pressureCoefficientSlider.get() == 0 or springStrengthSlider.get() == 0:
-                print("Resetting sliders")
-                springStrengthSlider.set(100)
-                pressureCoefficientSlider.set(10)
-                getNewShape(sideSlider.get())
-                break
+        points[i]["prevX"] = points[i]["xpos"] - vx
+        points[i]["prevY"] = points[i]["ypos"] - vy
 
-        xspeed = max(-maxSpeed, min(xspeed, maxSpeed))
-        yspeed = max(-maxSpeed, min(yspeed, maxSpeed))
+        tempX = points[i]["xpos"]
+        tempY = points[i]["ypos"]
 
-        if abs(xspeed) < 1:
-            xspeed = 0
-        if abs(yspeed) < 1:
-            yspeed = 0
+        points[i]["xpos"] += (points[i]["xpos"] - points[i]["prevX"]) + points[i]["aX"] * deltaT ** 2
+        points[i]["ypos"] += (points[i]["ypos"] - points[i]["prevY"]) + points[i]["aY"] * deltaT ** 2
 
-        xpos += xspeed * deltaT
-        ypos += yspeed * deltaT
+        points[i]["prevX"] = tempX
+        points[i]["prevY"] = tempY
 
-        points[i]["xpos"] = xpos
-        points[i]["ypos"] = ypos
-        points[i]["xspeed"] = xspeed
-        points[i]["yspeed"] = yspeed
+        points[i]["aX"] = 0
+        points[i]["aY"] = 0
 
     # Boundaries
-    for i in range(len(points)):
-        xpos = points[i]["xpos"]
-        ypos = points[i]["ypos"]
-        xspeed = points[i]["xspeed"]
-        yspeed = points[i]["yspeed"]
+    for p in points:
+        xpos = p["xpos"]
+        ypos = p["ypos"]
 
-        if ypos - (pointMass / 2) <= -200:
-            ypos = -200 + pointMass / 2
-            yspeed *= -friction * elasticity
-            xspeed *= friction
+        xvel = xpos - p["prevX"]
+        yvel = ypos - p["prevY"]
 
-        if xpos - (pointMass / 2) <= -300:
-            xpos = -300 + pointMass / 2
-            xspeed *= -friction * elasticity
-            yspeed *= friction
-
-        if xpos + (pointMass / 2) >= 300:
-            xpos = 300 - pointMass / 2
-            xspeed *= -friction * elasticity
-            yspeed *= friction
-
-        if ypos + (pointMass / 2) >= 300:
-            ypos = 300 - pointMass / 2
-            yspeed *= -friction * elasticity
-            xspeed *= friction
-
-        points[i]["xpos"] = xpos
-        points[i]["ypos"] = ypos
-        points[i]["xspeed"] = xspeed
-        points[i]["yspeed"] = yspeed
-
+        if p["xpos"] > worldSize:
+            p["xpos"] = worldSize
+            p["prevX"] = p["xpos"] + xvel * elasticity
+        elif p["xpos"] < -worldSize:
+            p["xpos"] = -worldSize
+            p["prevX"] = p["xpos"] + xvel * elasticity
+        if p["ypos"] > worldSize:
+            p["ypos"] = worldSize
+            p["prevY"] = p["ypos"] + yvel * elasticity
+        elif p["ypos"] < -worldSize:
+            p["ypos"] = -worldSize
+            p["prevY"] = p["ypos"] + yvel * elasticity
 
 # Start drawing
 drawFrame()
